@@ -1,0 +1,20 @@
+# Syntax specification for the Hank programming language
+
+## Tokens
+IDENT = [a-z]([A-Za-z0-9'_]*)
+END  = .
+
+## Grammar
+Notation: EBNF
+
+Prog ::= decl*
+
+decl ::= fundecl
+
+fundecl ::= IDENT params '=' expr END
+
+params ::= IDENT*
+
+expr ::= 'let' IDENT '=' expr 'in' expr
+       | expr expr
+       | IDENT
