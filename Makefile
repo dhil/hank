@@ -5,7 +5,7 @@
 # Build system: ocamlbuild
 OBC=ocamlbuild
 # bin-annot is required for Merlin and other IDE-like tools
-OBC_FLAGS=-tag bin_annot -I parsing
+OBC_FLAGS=-tag bin_annot -use-menhir -use-ocamlfind -I parsing
 # Default compiler
 CC=$(OBC) $(OBC_FLAGS)
 
