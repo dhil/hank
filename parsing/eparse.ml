@@ -19,13 +19,13 @@ module type K = sig
     val apply : ('a, 'b) continuation -> 'a -> 'b
 end
 
-module Multi : K = struct
+module Multishot : K = struct
   let apply k x =
-    let k' = Obj.clone_continuation k in
+    let k' = Obj.clone k in
     continue k' x
 end
 
-module Linear : K = struct
+module Singleshot : K = struct
     let apply k x = continue k x
 end
 
@@ -33,21 +33,23 @@ end
 (** Primitive parsers **)
 (** Parsers **)
 module type PARSER = sig
-
-  val satisfy : ('a -> bool) -> 'a
-  val any  : unit -> 'a
+  type t
+         
+  val satisfy : (t -> bool) -> t
+  val any  : unit -> t
   val fail : unit -> 'a
   val choose : (unit -> 'a) -> (unit -> 'a) -> unit -> 'a
 
-  val run : (unit -> 'a) -> 'a
+  val run : t Stream.t -> (unit -> 'a) -> 'a
 end
 
-module Parser : PARSER = struct
-
-  effect Satisfy : ('a -> bool) -> 'a
+module Parser(K : K)(S : sig type t end) : PARSER with type t := S.t = struct
+  type t = S.t
+                                                                    
+  effect Satisfy : (t -> bool) -> t
   let satisfy p = perform (Satisfy p)
     
-  effect Any : 'a
+  effect Any : t
   let any () = perform Any
 
   effect Fail : 'a
@@ -55,35 +57,43 @@ module Parser : PARSER = struct
      = fun () ->
        match perform Fail with | _ -> assert false
    
-  effect Choose : (unit -> 'a ) * (unit -> 'a ) -> 'a
+  effect Choose : (unit -> 'a) * (unit -> 'a) -> 'a
   let choose p q = fun () -> perform (Choose (p, q))
 
-  let run : type a. (unit -> a) -> a
-     = fun m ->
-       let rec run' : type a. (unit -> a) -> a
-         = fun m ->               
-           match m () with
-           | v -> v
-           | effect Any k  -> failwith "Not yet implemented!"
-           | effect Fail _ -> Opt.fail ()
-           | effect (Choose (p,q)) k ->
-              begin
-                match Opt.optionalize (fun () -> run' p) with
-                | Some v -> continue k v
-                | None   ->
-                   match Opt.optionalize (fun () -> run' q) with
-                   | Some v -> continue k v
-                   | None -> Opt.fail ()
-              end
-           | effect (Satisfy p) k -> failwith "Not yet implemented!"
-       in
-       run' m
+  let run : type a. t Stream.t -> (unit -> a) -> a
+    = fun inp m ->
+    let getc = fun () -> Stream.next inp in
+    let rec run' : type a. (unit -> a) -> a
+       = fun (type b) m ->               
+         match m () with
+         | v -> v
+         | effect Any k  -> failwith "Not yet implemented"
+         | effect Fail _ -> Opt.fail ()
+         | effect (Choose (p,q)) k ->
+            begin
+              match Opt.optionalize (fun () -> run' p) with
+              | Some v -> K.apply k v
+              | None   ->
+                 match Opt.optionalize (fun () -> run' q) with
+                 | Some v -> K.apply k v
+                 | None -> Opt.fail ()
+            end
+         | effect (Satisfy p) k -> let c = getc () in if p c then continue k c else fail ()
+    in
+    run' m
 end
 
 
-module P = Parser
+module Combinators =
+  functor (P : PARSER) ->
+  struct
+   type t = P.t
+   let rec many p = P.choose (fun () -> p () :: many p ()) (fun () -> [])                 
+  end
 
-let char c = P.satisfy (fun c' -> c = c')
+module CP = Parser(Singleshot)(struct type t = char end)
+
+let char c = CP.satisfy (fun c' -> c = c')
   
 (* module UP = Parser(struct type t = unit end) *)
 (* module LP = Parser(struct type 'a t = 'a list end) *)
