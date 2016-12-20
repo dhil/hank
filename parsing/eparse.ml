@@ -14,81 +14,97 @@ end = struct
 end
 
 module Opt = Optionalize
-  
-(** Parsers **)
 
-module type PARSER = sig
-  type t
-  val char : char -> unit -> char
-  val any  : unit -> char  
-  val fail : unit -> 'a
-  val choose : (< h : 'a . ((unit -> 'a) * (unit -> 'a)) >) -> (< g : 'a >)
-    
-  val parse : char Stream.t -> (unit -> 'a) -> 'a
+module type K = sig
+    val apply : ('a, 'b) continuation -> 'a -> 'b
 end
 
-module Parser (S : sig type t end) : PARSER with type t := S.t = struct
-  type t = S.t
-      
-  effect Char : char -> char
-  let char c = fun () -> perform (Char c)
+module Multi : K = struct
+  let apply k x =
+    let k' = Obj.clone_continuation k in
+    continue k' x
+end
 
-  effect Any : char
+module Linear : K = struct
+    let apply k x = continue k x
+end
+
+  
+(** Primitive parsers **)
+(** Parsers **)
+module type PARSER = sig
+
+  val satisfy : ('a -> bool) -> 'a
+  val any  : unit -> 'a
+  val fail : unit -> 'a
+  val choose : (unit -> 'a) -> (unit -> 'a) -> unit -> 'a
+
+  val run : (unit -> 'a) -> 'a
+end
+
+module Parser : PARSER = struct
+
+  effect Satisfy : ('a -> bool) -> 'a
+  let satisfy p = perform (Satisfy p)
+    
+  effect Any : 'a
   let any () = perform Any
 
   effect Fail : 'a
-  let fail () = match perform Fail with | _ -> assert false
+  let fail : type a . unit -> a
+     = fun () ->
+       match perform Fail with | _ -> assert false
    
-  effect Choose : (< h : 'a . ((unit -> 'a) * (unit -> 'a)) >) -> (< g : 'a >)
-  let choose o = perform (Choose o)
-   
-  let parse inp p =
-    let getc : unit -> char = fun () -> Stream.next inp in
-    let rec run p () =
-      match p () with
-      | v -> v
-      | effect (Choose o) k ->
-         let p = fst o#h in
-         match Opt.optionalize (run p) with
-         | Some v -> continue k (object method g = v end)
-         | _ -> failwith "Not yet implemented"
-    in
-    run p ()
-    (* let rec run p () = *)
-    (*   try  *)
-    (*     match p () with *)
-    (*     | v -> v *)
-    (*     | effect (Char c) k -> *)
-    (*        if c == getc () then continue k c *)
-    (*        else Opt.fail () *)
-    (*     | effect Any k -> *)
-    (*        continue k (getc ()) *)
-    (*     | effect Fail k -> Opt.fail () *)
-    (*     | effect (Choose o) k -> *)
-    (*        let p = fst o#g in *)
-    (*        match optionalize (run p) with *)
-    (*        | Some v -> continue k (wrap 2) *)
-    (*        | _ -> assert false *)
-    (*     (\* | effect (Choose (p', q)) k -> *\) *)
-    (*     (\*    match Opt.optionalize (run p') with *\) *)
-    (*     (\*    | Some (W v) -> continue k (W v) *\) *)
-    (*     (\*    | None   -> failwith "" *\) *)
-    (*           (\* begin *\) *)
-    (*           (\*   match Opt.optionalize (run q) with *\) *)
-    (*           (\*   | Some v -> continue k v *\) *)
-    (*           (\*   | None   -> Opt.fail () *\) *)
-    (*           (\* end *\) *)
-    (*        with *)
-    (*        | Stream.Failure -> Opt.fail () *)
-    (* in *)
-    (* run p () *)
-                                
+  effect Choose : (unit -> 'a ) * (unit -> 'a ) -> 'a
+  let choose p q = fun () -> perform (Choose (p, q))
+
+  let run : type a. (unit -> a) -> a
+     = fun m ->
+       let rec run' : type a. (unit -> a) -> a
+         = fun m ->               
+           match m () with
+           | v -> v
+           | effect Any k  -> failwith "Not yet implemented!"
+           | effect Fail _ -> Opt.fail ()
+           | effect (Choose (p,q)) k ->
+              begin
+                match Opt.optionalize (fun () -> run' p) with
+                | Some v -> continue k v
+                | None   ->
+                   match Opt.optionalize (fun () -> run' q) with
+                   | Some v -> continue k v
+                   | None -> Opt.fail ()
+              end
+           | effect (Satisfy p) k -> failwith "Not yet implemented!"
+       in
+       run' m
 end
 
 
-module CP = Parser(struct type t = unit end)
+module P = Parser
+
+let char c = P.satisfy (fun c' -> c = c')
+  
+(* module UP = Parser(struct type t = unit end) *)
+(* module LP = Parser(struct type 'a t = 'a list end) *)
 
 (* let char' c = fun () -> let _ = CP.char c () in () *)
   
 (* let (<|>) p q = CP.choose p q   *)
 (* let digit = CP.(char' '0' <|> char' '1' <|> char' '3') *)
+
+(* let choose (type a) (p : (unit -> a)) (q : (unit -> a)) = *)
+(*   let module M = struct effect Choose : (unit -> a) * (unit -> a) -> a end in *)
+(*   let open M in *)
+(*   let rec handle m = *)
+(*     match m () with *)
+(*     | v -> v *)
+(*     | effect (Choose (p,q)) k -> *)
+(*        match handle p with *)
+(*        | v -> continue k v *)
+(*        | None -> *)
+(*           match Opt.optionalize (fun () -> handle q) with *)
+(*           | Some v -> continue k v *)
+(*           | None   -> Opt.fail () *)
+(*   in *)
+(*   handle (fun () -> perform (Choose (p, q))) *)
