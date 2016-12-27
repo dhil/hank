@@ -31,16 +31,18 @@ end
 
   
 (** Primitive parsers **)
+type ('a, 'b) parser = 'a -> 'b
 (** Parsers **)
 module type PARSER = sig
   type t
          
-  val satisfy : (t -> bool) -> t
-  val any  : unit -> t
-  val fail : unit -> 'a
-  val choose : (unit -> 'a) -> (unit -> 'a) -> unit -> 'a
+  val satisfy : (t -> bool, t) parser
+  val any  : (unit, t) parser
+  val fail : (unit, 'a) parser
+  val choose : (unit -> 'a) -> (unit -> 'a) -> 'a
+  val eos  : (unit, unit) parser
 
-  val run : t Stream.t -> (unit -> 'a) -> 'a
+  val run : t Stream.t -> (unit, 'a) parser -> 'a
 end
 
 module Parser(K : K)(S : sig type t end) : PARSER with type t := S.t = struct
@@ -49,8 +51,7 @@ module Parser(K : K)(S : sig type t end) : PARSER with type t := S.t = struct
   effect Satisfy : (t -> bool) -> t
   let satisfy p = perform (Satisfy p)
     
-  effect Any : t
-  let any () = perform Any
+  let any () = satisfy (fun _ -> true)
 
   effect Fail : 'a
   let fail : type a . unit -> a
@@ -58,16 +59,19 @@ module Parser(K : K)(S : sig type t end) : PARSER with type t := S.t = struct
        match perform Fail with | _ -> assert false
    
   effect Choose : (unit -> 'a) * (unit -> 'a) -> 'a
-  let choose p q = fun () -> perform (Choose (p, q))
+  let choose p q = perform (Choose (p, q))
 
-  let run : type a. t Stream.t -> (unit -> a) -> a
+  effect EOS : unit
+  let eos () = perform EOS
+                           
+  let run : type a. t Stream.t -> (unit, a) parser -> a
     = fun inp m ->
     let getc = fun () -> Stream.next inp in
     let rec run' : type a. (unit -> a) -> a
        = fun (type b) m ->               
          match m () with
          | v -> v
-         | effect Any k  -> failwith "Not yet implemented"
+         | effect EOS k  -> try Stream.empty inp; continue k () with Stream.Failure -> Opt.fail ()
          | effect Fail _ -> Opt.fail ()
          | effect (Choose (p,q)) k ->
             begin
@@ -83,38 +87,79 @@ module Parser(K : K)(S : sig type t end) : PARSER with type t := S.t = struct
     run' m
 end
 
+(** Higher order parsers **)
+module type COMBINATORS = sig
+  val (<|>) : (unit, 'a) parser -> (unit, 'a) parser -> (unit, 'a) parser
+  val many : (unit -> 'a) -> unit -> 'a list
+  val many1 : (unit -> 'a) -> unit -> 'a list
+  val option : (unit, 'a) parser -> (unit, 'a option) parser
+end
+                             
+module Combinators (P : PARSER) : COMBINATORS  = struct
+  let (<|>) p q = fun () -> P.choose p q
+  let rec many p = (fun () -> p () :: many p ()) <|> (fun () -> [])
+  let many1 p () = p () :: many p ()
+  let option p () = failwith "option parser not implemented yet"
+end
 
-module Combinators =
-  functor (P : PARSER) ->
-  struct
-   type t = P.t
-   let rec many p = P.choose (fun () -> p () :: many p ()) (fun () -> [])                 
-  end
+let explode s =
+  let rec expl i l =
+    if i < 0 then l else
+    expl (i - 1) (s.[i] :: l) in
+  expl (String.length s - 1) []
 
-module CP = Parser(Singleshot)(struct type t = char end)
+let implode l =
+  let result = Bytes.create (List.length l) in
+  let rec imp i = function
+  | [] -> result
+  | c :: l -> result.[i] <- c; imp (i + 1) l in
+  Bytes.to_string (imp 0 l)
+                                                   
+module type CHARPARSER = sig
+  include PARSER with type t := char
+  include COMBINATORS
 
-let char c = CP.satisfy (fun c' -> c = c')
+                                  
+  val char : char -> (unit, char) parser
+  val whitespace : (unit, unit) parser
+  val string : string -> (unit, string) parser
+  val digit : unit -> char
+  val natural : unit -> string
+  val signed : (unit, string) parser -> (unit, string) parser
+  val integer : (unit, string) parser
+end
+                                                   
+module CharParser (CP : PARSER with type t = char) : CHARPARSER = struct
+  include CP
+  include Combinators(CP)
   
-(* module UP = Parser(struct type t = unit end) *)
-(* module LP = Parser(struct type 'a t = 'a list end) *)
+                     
+  let char c = fun () -> CP.satisfy (fun c' -> c = c')
+  let whitespace () = ignore @@ CP.satisfy
+                        (function
+                         | ' ' | '\012' | '\n' | '\r' | '\t' -> true
+                         | _ -> false)
+  let string s = fun () -> String.map (fun c -> char c ()) s
+  let digit () = CP.satisfy
+                   (function
+                    | '0' .. '9' -> true
+                    | _          -> false)
+  let natural () = implode @@ many1 digit ()
+  let signed p =
+    let with_sign c () = ignore (char c ());
+                       Bytes.of_string (p ())
+                       |> (fun bs -> Bytes.extend bs 1 0)
+                       |> (fun bs -> Bytes.set bs 0 c; bs)
+                       |> Bytes.to_string
+    in
+    let positive : (unit, string) parser = with_sign '+' in
+    let negative = with_sign '-' in
+    positive <|> negative <|> p
+  let integer = signed natural
 
-(* let char' c = fun () -> let _ = CP.char c () in () *)
-  
-(* let (<|>) p q = CP.choose p q   *)
-(* let digit = CP.(char' '0' <|> char' '1' <|> char' '3') *)
+                         
+end
+                                                   
+(*module CP = Parser(Singleshot)(struct type t = char end)
 
-(* let choose (type a) (p : (unit -> a)) (q : (unit -> a)) = *)
-(*   let module M = struct effect Choose : (unit -> a) * (unit -> a) -> a end in *)
-(*   let open M in *)
-(*   let rec handle m = *)
-(*     match m () with *)
-(*     | v -> v *)
-(*     | effect (Choose (p,q)) k -> *)
-(*        match handle p with *)
-(*        | v -> continue k v *)
-(*        | None -> *)
-(*           match Opt.optionalize (fun () -> handle q) with *)
-(*           | Some v -> continue k v *)
-(*           | None   -> Opt.fail () *)
-(*   in *)
-(*   handle (fun () -> perform (Choose (p, q))) *)
+let char c = CP.satisfy (fun c' -> c = c')*)
