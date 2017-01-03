@@ -1,38 +1,5 @@
-(** Utils **)
-module Option: sig
-  val fail : unit -> 'a
-  val optionalize : (unit -> 'a) -> 'a option
-  val map : ('a -> 'b) -> 'a option -> 'b option
-end = struct
-  effect Fail : 'a
-  let fail () = match perform Fail with | _ -> assert false
-
-  let optionalize m =
-    match m () with
-    | v             -> Some v
-    | effect Fail _ -> None
-  
-
-  let map f = function
-    | Some x -> Some (f x)
-    | None   -> None
-end
-
-module Opt = Option
-
-module type K = sig
-    val apply : ('a, 'b) continuation -> 'a -> 'b
-end
-
-module Multishot : K = struct
-  let apply k x =
-    let k' = Obj.clone k in
-    continue k' x
-end
-
-module Singleshot : K = struct
-    let apply k x = continue k x
-end
+open Continuation
+open Utils
 
   
 (** Primitive parsers **)
@@ -114,33 +81,40 @@ module type COMBINATORS = sig
   val (<*)  : 'a parser -> 'b parser -> 'a parser
   val (<*>) : 'a parser -> 'b parser -> ('a * 'b) parser
   val (<|>) : 'a parser -> 'a parser -> 'a parser
-  val many : 'a parser -> 'a list parser
+  val (<$>) : ('a -> 'b) -> 'a parser -> 'b parser
+  val many  : 'a parser -> 'a list parser
   val many1 : 'a parser -> 'a list parser
-  val empty : unit parser
+  val optional : 'a parser -> 'a option parser
+  val succeed : 'a -> 'a parser
+  val epsilon : unit parser
+  val chainl : 'a parser -> ('a -> 'a -> 'a) parser -> 'a parser
 end
                              
 module Combinators (P : PARSER) : COMBINATORS = struct
   let ( *>) p q () = ignore (runp p); runp q
-  let (<*)  p q () = let x = runp p in ignore (runp q); x
-  let (<*>) p q () = let x = runp p in let y = runp q in (x, y) 
+  let (<*)  p q () = let x = runp p in
+                     ignore (runp q); x
+  let (<*>) : type a b. a parser -> b parser -> (a * b) parser
+              = fun p q () -> let x = runp p in
+                              let y = runp q in (x, y) 
   let (<|>) p q = P.choose p q
-  let rec many p = (fun () -> let x = runp p in let rest = runp (many p) in x :: rest) <|> (fun () -> [])
-  let many1 p () = let x = runp p in let rest = runp (many p) in x :: rest
-  let empty () = ()
+  let (<$>) f p = fun () -> runp p |> f
+  let rec many p = (fun () -> let x = runp p in
+                              let rest = runp (many p) in
+                              x :: rest)
+                   <|> (fun () -> [])
+  let many1 p () = let x = runp p in
+                   let rest = runp (many p) in
+                   x :: rest
+  let succeed v () = v
+  let epsilon = succeed ()
+  let chainl p s =
+    let f (x, xs) = List.fold_left (fun acc (op,y) -> op y acc) x xs in 
+    f <$> (p <*> (many (s <*> p)))
+  let optional p = (fun () -> Some (runp p)) <|> (succeed None)
 end
 
-let explode s =
-  let rec expl i l =
-    if i < 0 then l else
-    expl (i - 1) (s.[i] :: l) in
-  expl (String.length s - 1) []
 
-let implode l =
-  let result = Bytes.create (List.length l) in
-  let rec imp i = function
-  | [] -> result
-  | c :: l -> result.[i] <- c; imp (i + 1) l in
-  Bytes.to_string (imp 0 l)
                                                    
 module type CHARPARSER = sig
   include PARSER with type t = char
@@ -167,19 +141,19 @@ module CharParser(CP : PARSER with type t = char) : CHARPARSER = struct
   let whitespace = CP.satisfy (function
                                | ' ' | '\012' | '\n' | '\r' | '\t' -> true
                                | _ -> false)
-                   *> empty
+                   *> epsilon
   let space = CP.satisfy (function
                           | ' ' | '\t' -> true
                           | _ -> false)
-              *> empty
+              *> epsilon
                       
-  let spaces = (many space) *> empty
+  let spaces = (many space) *> epsilon
   let string s = fun () -> String.map (fun c -> runp (char c)) s
   let digit = CP.satisfy (function
                           | '0' .. '9' -> true
                           | _          -> false)
                            
-  let natural () = implode @@ many1 digit ()
+  let natural () = String.implode @@ many1 digit ()
   let signed p =
     let with_sign c () = ignore (runp (char c));
                        Bytes.of_string (runp p)
@@ -195,5 +169,5 @@ module CharParser(CP : PARSER with type t = char) : CHARPARSER = struct
                          
 end
                                                    
-module CP = Parser(Singleshot)(struct type t = char end)
-module CP = CharParser(CP)
+module CP_s = Parser(Singleshot)(struct type t = char end)
+module CP = CharParser(CP_s)
