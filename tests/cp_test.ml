@@ -20,6 +20,13 @@ let runp : type a . a parser -> string -> (a * string)
 let runp' p s = fst (runp p s)
 
 let tests n =
+  let char =
+    QCheck.Test.make ~count:n
+                     ~name:"char"
+                     QCheck.(printable_char)
+                     (fun c -> let r = runp' CP.(char c) (String.of_char c) in
+                               r = c)
+  in
   let digit =
     QCheck.Test.make ~count:n
                      ~name:"digit"
@@ -45,6 +52,25 @@ let tests n =
                                let r = runp' CP.(spaces *> natural) (Printf.sprintf "%s%s" (make_space i) j) in
                                String.compare r j = 0)
   in
-  [ digit
+  let string =
+    QCheck.Test.make ~count:n
+                     ~name:"string"
+                     QCheck.(printable_string)
+                     (fun s -> let r = runp' CP.(string s) s in
+                               String.compare s r = 0)
+  in
+  let natural_seq =
+    QCheck.Test.make ~count:n
+                     ~name:"natural_seq"
+                     QCheck.(int)
+                     (fun i -> let i = abs i in
+                               let s = Printf.sprintf "%d;%d" i i in
+                               let (x,y) = runp' CP.( (natural <* char ';') <*> natural ) s in
+                               int_of_string x = i && i = int_of_string y)
+  in
+  [ char
+  ; digit
   ; natural
-  ; spaces_natural ]
+  (* ; spaces_natural *)
+  ; string
+  ; natural_seq ]
