@@ -22,6 +22,9 @@ run-tests: tests
 tests: tests/driver.ml
 	$(OBC) -Is common,parsing -use-ocamlfind -pkgs "oUnit,qcheck" tests/driver.native
 
+top: _build/common/continuation.cmo _build/common/utils.cmo _build/parsing/eparse.cmo
+	ocamlmktop -o hanktop -I _build/common/ -I _build/parsing continuation.cmo utils.cmo eparse.cmo
+
 clean:
 	$(CC) -clean
 

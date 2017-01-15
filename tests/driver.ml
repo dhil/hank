@@ -3,7 +3,7 @@ let passing =
     ~name:"list_rev_is_involutive"
     QCheck.(list small_int)
     (fun l -> List.rev (List.rev l) = l);;*)
-  Cp_test.tests 1000
+  Cp_test.tests 100
 
 let failing =
   QCheck.Test.make ~count:10
