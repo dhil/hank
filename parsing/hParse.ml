@@ -102,6 +102,7 @@ module type COMBINATORS = sig
   val epsilon : (s, unit) parser
   val chainl : (s,'a) parser -> (s, 'a -> 'a -> 'a) parser -> (s, 'a) parser
   val sequence : s list -> (s, unit) parser
+  val enclosed : s -> (s, 'a) parser -> s -> (s, 'a) parser
 end
 
 module Combinators (P : PARSER) : COMBINATORS with type s := P.s = struct
@@ -189,6 +190,12 @@ module Combinators (P : PARSER) : COMBINATORS with type s := P.s = struct
           else run' s' P.fail) ((),s) seq
     in
     mk_parser parse
+
+  let enclosed l p r =
+    let p =
+      (P.satisfy (fun l' -> l = l')) *> p
+    in
+    p <* (P.satisfy (fun r' -> r = r'))
 end
 
 
@@ -239,12 +246,12 @@ module CharParser(CP : PARSER with type s = char) : CHARPARSER = struct
                                | ' ' | '\012' | '\n' | '\r' | '\t' -> true
                                | _ -> false)
                    *> epsilon
-  let space = CP.satisfy (function
+  let space = (CP.satisfy (function
                           | ' ' | '\t' -> true
                           | _ -> false)
-              *> epsilon
+              ) *> epsilon
 
-  let spaces = many space *> epsilon
+  let spaces = (many space) *> epsilon
 
   let string str =
     let parse s =

@@ -4,11 +4,11 @@ open Lexer
 open Token
 
 let () =
-  let source = "  foobar   42abba" in
+  let source = "  foo  , bar,   BaZ   ,gaz" in
   let stream = Stream.of_string source in
   try
-    let tokens = lex stream in
-    Stream.iter (fun t -> Printf.printf "%s " (string_of_token t)) tokens
+    let tokens : (token * unit) Stream.t = lex stream in
+    Stream.iter (fun (t,()) -> Printf.printf "%s " (string_of_token t)) tokens
   with
   | LexicalError -> Printf.printf "Lexical error!\n"
 (*  let module MyParser = Parser(Continuation.Singleshot)(struct type t = char end) in

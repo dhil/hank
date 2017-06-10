@@ -5,6 +5,8 @@ type token =
   | LET
   | IN
   | SYMBOL of string
+  | DATA
+  | INTERFACE
 
 let string_of_token =
   let open Printf in
@@ -15,3 +17,5 @@ let string_of_token =
   | LET -> "LET"
   | IN -> "IN"
   | SYMBOL s -> sprintf "SYMBOL(%s)" s
+  | DATA -> "DATA"
+  | INTERFACE -> "INTERFACE"
