@@ -1,21 +1,53 @@
 type token =
-  | LNAME of string
-  | UNAME of string
+  | NAME of string
   | INT of int
   | LET
   | IN
-  | SYMBOL of string
   | DATA
   | INTERFACE
+  | STRING of string
+  | CHAR of char
+  | LBRACE
+  | RBRACE
+  | LPAREN
+  | RPAREN
+  | LBRACKET
+  | RBRACKET
+  | ARROW
+  | EQUAL
+  | LT
+  | GT
+  | BAR
+  | COLON
+  | SEMICOLON
+  | COMMA
+  | BANG
+  | EOF
 
 let string_of_token =
   let open Printf in
   function
-  | LNAME s -> sprintf "LNAME(%s)" s
-  | UNAME s -> sprintf "UNAME(%s)" s
-  | INT i -> sprintf "INT(%d)" i
+  | NAME s -> sprintf "NAME(%s)" s
+  | INT i -> sprintf "INTEGER(%d)" i
   | LET -> "LET"
-  | IN -> "IN"
-  | SYMBOL s -> sprintf "SYMBOL(%s)" s
+  | IN  -> "IN"
   | DATA -> "DATA"
   | INTERFACE -> "INTERFACE"
+  | STRING s -> sprintf "STRING(%s)" s
+  | CHAR c -> sprintf "CHAR(%c)" c
+  | LBRACE -> "LBRACE"
+  | RBRACE -> "RBRACE"
+  | LPAREN -> "LPAREN"
+  | RPAREN -> "RPAREN"
+  | LBRACKET -> "LBRACKET"
+  | RBRACKET -> "RBRACKET"
+  | ARROW -> "ARROW"
+  | EQUAL -> "EQUAL"
+  | LT -> "LT"
+  | GT -> "GT"
+  | BAR -> "BAR"
+  | COLON -> "COLON"
+  | SEMICOLON -> "SEMICOLON"
+  | COMMA -> "COMMA"
+  | BANG -> "BANG"
+  | EOF -> "EOF"

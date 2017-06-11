@@ -103,6 +103,7 @@ module type COMBINATORS = sig
   val chainl : (s,'a) parser -> (s, 'a -> 'a -> 'a) parser -> (s, 'a) parser
   val sequence : s list -> (s, unit) parser
   val enclosed : s -> (s, 'a) parser -> s -> (s, 'a) parser
+  val one_of : (s, 'a) parser list -> (s, 'a) parser
 end
 
 module Combinators (P : PARSER) : COMBINATORS with type s := P.s = struct
@@ -196,6 +197,12 @@ module Combinators (P : PARSER) : COMBINATORS with type s := P.s = struct
       (P.satisfy (fun l' -> l = l')) *> p
     in
     p <* (P.satisfy (fun r' -> r = r'))
+
+  let one_of ps =
+    List.fold_left (<|>) P.fail ps
+
+  let none_of ps =
+    ((one_of ps) <* P.fail) <|> any
 end
 
 

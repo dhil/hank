@@ -50,6 +50,12 @@ module String = struct
     Bytes.to_string b
 end
 
+module Char = struct
+  include Char
+
+  let to_string c = Printf.sprintf "%c" c
+end
+
 
 module FP: sig
   val flip    : ('a -> 'b -> 'c) -> ('b -> 'a -> 'c)
