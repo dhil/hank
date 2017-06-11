@@ -201,8 +201,7 @@ module Combinators (P : PARSER) : COMBINATORS with type s := P.s = struct
   let one_of ps =
     List.fold_left (<|>) P.fail ps
 
-  let none_of ps =
-    ((one_of ps) <* P.fail) <|> any
+  let none_of ps = failwith "Not yet implemented"
 end
 
 
