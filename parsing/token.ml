@@ -7,6 +7,7 @@ type token =
   | INTERFACE
   | STRING of string
   | CHAR of char
+  | OPERATOR of string
   | LBRACE
   | RBRACE
   | LPAREN
@@ -35,6 +36,7 @@ let string_of_token =
   | INTERFACE -> "INTERFACE"
   | STRING s -> sprintf "STRING(%s)" s
   | CHAR c -> sprintf "CHAR(%c)" c
+  | OPERATOR s -> sprintf "OPERATOR(%s)" s
   | LBRACE -> "LBRACE"
   | RBRACE -> "RBRACE"
   | LPAREN -> "LPAREN"
