@@ -11,9 +11,6 @@ CC=$(OBC) $(OBC_FLAGS)
 # Custom toplevel compiler
 TC=ocamlmktop
 
-# Check whether the OCaml compiler supports effect handlers
-
-
 all: native
 
 check-compiler:
