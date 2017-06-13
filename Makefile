@@ -11,9 +11,19 @@ CC=$(OBC) $(OBC_FLAGS)
 # Custom toplevel compiler
 TC=ocamlmktop
 
+# Check whether the OCaml compiler supports effect handlers
+
+
 all: native
 
-native:
+check-compiler:
+	@HANDLERS_ENABLED=`ocamlopt -version | grep multicore`; \
+	if [ $$? -ne 0 ]; then \
+		echo "error: the OCaml compiler version $$(ocamlopt -version) does not support effect handlers." > /dev/stderr; \
+		exit 1; \
+	fi
+
+native: check-compiler
 	$(CC) main.native
 
 run-tests: tests
