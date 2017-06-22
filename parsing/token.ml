@@ -1,4 +1,4 @@
-type token =
+type t =
   | NAME of string
   | INT of int
   | LET
@@ -25,7 +25,7 @@ type token =
   | BANG
   | EOF
 
-let string_of_token =
+let to_string =
   let open Printf in
   function
   | NAME s -> sprintf "NAME(%s)" s
@@ -53,3 +53,11 @@ let string_of_token =
   | COMMA -> "COMMA"
   | BANG -> "BANG"
   | EOF -> "EOF"
+
+let compare t1 t2 =
+  let open Utils in
+  match Pervasives.compare t1 t2 with
+  | (-1) -> LT
+  | 0 -> EQ
+  | 1 -> GT
+  | _ -> assert false

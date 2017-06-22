@@ -36,4 +36,8 @@ module Located = struct
       loc_pos = make pos_start pos_end }
 
   let item lc = lc.loc_item
+
+  let lift_dummy elem =
+    { loc_item = elem;
+      loc_pos = none }
 end

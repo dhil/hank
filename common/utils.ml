@@ -1,4 +1,7 @@
 (** Utils **)
+
+type ordering = LT | EQ | GT
+
 module Option: sig
   effect Fail : 'a
   val fail : unit -> 'a

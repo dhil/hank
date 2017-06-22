@@ -28,7 +28,7 @@ let white = [' ' '\t']+
 let newline = '\r' | '\n' | "\r\n"
 let name = ['A'-'Z' 'a'-'z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_' '\'']*
 
-let op_initial = ['<' '>' '?' '$' ':' ';' '|' '&' '+' '-' '*' '/' '^' '~' '=']
+let op_initial = ['!' '<' '>' '?' '$' ':' ';' '|' '&' '+' '-' '*' '/' '^' '~' '=']
 let operator = op_initial (op_initial | '!')*
 
 let comment = "--" [^ '\r' '\n']*
@@ -45,22 +45,17 @@ rule read =
   | "data"   { located DATA lexbuf }
   | name     { located (NAME (lexeme lexbuf)) lexbuf }
   | int      { located (INT (int_of_string (lexeme lexbuf))) lexbuf }
-  | '='      { located EQUAL lexbuf }
   | '{'      { located LBRACE lexbuf }
   | '}'      { located RBRACE lexbuf }
   | '('      { located LPAREN lexbuf }
   | ')'      { located RPAREN lexbuf }
   | '['      { located LBRACKET lexbuf }
   | ']'      { located RBRACKET lexbuf }
-  | '<'      { located LT lexbuf }
-  | '>'      { located GT lexbuf }
   | ','      { located COMMA lexbuf }
   | '"'      { located (read_string (Buffer.create 17) lexbuf) lexbuf }
   | "'"      { located (CHAR (read_char lexbuf)) lexbuf }
   | "->"     { located ARROW lexbuf }
   | ':'      { located COLON lexbuf }
-  | '|'      { located BAR lexbuf }
-  | '!'      { located BANG lexbuf }
   | operator { located (OPERATOR (lexeme lexbuf)) lexbuf }
   | eof      { located EOF lexbuf }
   | _ { raise (SyntaxError ("Unexpected char: " ^ lexeme lexbuf)) }
