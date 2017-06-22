@@ -11,7 +11,7 @@ CC=$(OBC) $(OBC_FLAGS)
 # Custom toplevel compiler
 TC=ocamlmktop
 
-all: native
+all: native byte
 
 check-compiler:
 	@HANDLERS_ENABLED=`ocamlopt -version | grep multicore`; \
@@ -19,6 +19,9 @@ check-compiler:
 		echo "error: the OCaml compiler version $$(ocamlopt -version) does not support effect handlers." > /dev/stderr; \
 		exit 1; \
 	fi
+
+byte: check-compiler
+	$(CC) main.byte
 
 native: check-compiler
 	$(CC) main.native
@@ -29,8 +32,9 @@ run-tests: tests
 tests: tests/driver.ml
 	$(OBC) -Is common,parsing -use-ocamlfind -pkgs "oUnit,qcheck" tests/driver.native
 
-top: _build/common/continuation.cmo _build/common/utils.cmo _build/parsing/hParse.cmo
-	ocamlmktop -o hanktop -I _build/common/ -I _build/parsing continuation.cmo utils.cmo hParse.cmo
+top: byte
+#ocamlmktop -o hanktop -I _build/common/ -I _build/parsing continuation.cmo utils.cmo loc.cmo token.cmo lexer.cmo hParse.cmo
+	ocamlmktop -o hanktop -I _build/common/ -I _build/parsing utils.cmo loc.cmo token.cmo
 
 clean:
 	$(CC) -clean
