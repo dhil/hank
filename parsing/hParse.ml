@@ -12,6 +12,7 @@ exception SyntaxError
 module type TOKEN = sig
   type t
   val compare : t -> t -> ordering
+  val to_string : t -> string
 end
 
 (** Parsers **)
@@ -80,6 +81,10 @@ struct
   let any : Token.t t
     = of_comp (fun () -> perform Any)
 
+  effect Peek : Token.t
+  let peek : Token.t t
+    = of_comp (fun () -> perform Peek)
+
   let satisfy : (Token.t -> bool) -> Token.t t
     = fun p ->
     let parse () =
@@ -119,12 +124,21 @@ struct
       | effect Any k ->
          begin
            try
-             K.apply k (Stream.next !stream)
+             let t = Stream.next !stream in
+             Printf.printf "Any: %s\n" (Token.to_string t);
+             K.apply k t
            with Stream.Failure -> K.raise k Fail
+         end
+      | effect Peek k ->
+         begin
+           match Stream.peek !stream with
+           | None -> K.raise k Fail
+           | Some t -> Printf.printf "Peeked: %s\n" (Token.to_string t); K.apply k t
          end
       | effect (Choose (p,q)) k ->
          begin
            let (s1,s2) = Stream.tee !stream in
+           let (s3,_) = Stream.tee !stream in
            match stream := s1; run p with
            | result -> K.apply k result
            | exception Fail ->
@@ -232,9 +246,12 @@ struct
 
   let separated_list : sep:Token.t -> 'a t -> 'a list t
     = fun ~sep p ->
-    let px = p in
-    let pxs = many p in
-    let q = (fun (x,xs) -> x :: xs) <$> (px <*> pxs) in
+    let x = p in
+    let sep_xs =
+      let separator = token sep in
+      many (separator *> p)
+    in
+    let q = (fun (x,xs) -> x :: xs) <$> (x <*> sep_xs) in
     q <|> nil
 end
 
