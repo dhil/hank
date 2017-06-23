@@ -1,5 +1,6 @@
 open Utils
 open HParse
+open Syntax
 
 (* let () = *)
 (*   let source = "42 foo {} [ ] | bar" in *)
@@ -55,6 +56,9 @@ module Tok = struct
 
   let lift : Token.t -> t
     = fun t -> Loc.Located.lift_dummy t
+
+  let unpack : t -> Token.t
+    = fun t -> Loc.Located.item t
 end
 
 let grammar (module P : PARSER with type token = Tok.t) =
@@ -64,10 +68,22 @@ let grammar (module P : PARSER with type token = Tok.t) =
   let brackets p =
     enclosed ~left:(lift LBRACKET) ~right:(lift RBRACKET) p
   in
+  let parens p =
+    enclosed ~left:(lift LPAREN) ~right:(lift RPAREN) p
+  in
   let identifier =
-    satisfy (fun t -> match Loc.Located.item t with
-                      | NAME _ -> true
-                      | _ -> false)
+    let ident =
+      satisfy
+        (fun t -> match Loc.Located.item t with
+        | NAME _ -> true
+        | _ -> false)
+    in
+    let transform tok =
+      match Tok.unpack tok with
+      | NAME name -> Name name
+      | _ -> assert false
+    in
+    transform <$> ident
   in
   let operator s =
     token (lift (OPERATOR s))
@@ -75,21 +91,31 @@ let grammar (module P : PARSER with type token = Tok.t) =
   let effect_var =
     let parse () =
       match eval @@ optional identifier with
-      | None -> lift (NAME "£")
-      | Some name -> name
+      | None -> Name "£"
+      | Some ident -> ident
     in
     of_comp parse
   in
   let tyvars =
-    let effvar = (fun name -> name) <$> (brackets effect_var) in
-    let tyvar  = (fun name -> name) <$> identifier in
+    let effvar = (brackets effect_var) in
+    let tyvar  = identifier in
     effvar <|> tyvar
   in
-  let constr =
-    identifier
+  let type' =
+    let parenthesised= parens identifier in
+    let basic = identifier in
+    parenthesised <|> basic
   in
-  let data_declaration =
-    let data   = token (lift DATA) in
+  let constr : Syntax.constr P.t =
+    let tag = identifier in
+    let params = many type' in
+    let transform (Name name, params) =
+      Constr (name, [])
+    in
+    transform <$> (tag <*> params)
+  in
+  let variant_declaration t0 =
+    let data   = token t0 in
     let tyvars = many tyvars in
     let equal = operator "=" in
     let constrs = separated_list ~sep:(lift (OPERATOR "|")) constr in
@@ -103,6 +129,9 @@ let grammar (module P : PARSER with type token = Tok.t) =
     in
     of_comp parse
   in
+  let data_declaration =
+    variant_declaration (lift DATA)
+  in
   let eof = token (lift EOF) in
   data_declaration <* eof
 
@@ -111,7 +140,7 @@ let () =
     let module Parser = Parser(Continuation.Singleshot)(Tok) in
     try
       (*let file = open_in "testsuite/paper.fk" in*)
-      let source = "data Foo a = Bar | Baz" in
+      let source = "data Foo a = bar Int | baz Char String" in
       (*let lexbuf = Lexing.from_channel file in*)
       let lexbuf = Lexing.from_string source in
       let eos = ref false in
