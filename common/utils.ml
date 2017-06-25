@@ -31,6 +31,20 @@ end
 module Opt = Option
 
 
+module Char = struct
+  include Char
+
+  let to_string c = Printf.sprintf "%c" c
+
+  let is_uppercase c =
+    let code = code c in
+    code >= 65 && code <= 90
+
+  let is_lowercase c =
+    let code = code c in
+    code >= 97 && code <= 122
+end
+
 module String = struct
   include String
 
@@ -51,14 +65,13 @@ module String = struct
     let b = Bytes.create 1 in
     Bytes.set b 0 c;
     Bytes.to_string b
+
+  let is_capitalised s =
+    if length s > 0 then
+      Char.is_uppercase (get s 0)
+    else
+      false
 end
-
-module Char = struct
-  include Char
-
-  let to_string c = Printf.sprintf "%c" c
-end
-
 
 module FP: sig
   val flip    : ('a -> 'b -> 'c) -> ('b -> 'a -> 'c)
@@ -147,4 +160,18 @@ module Stream : STREAM = struct
     (Stream.from (next q1 q2), Stream.from (next q2 q1))
 end
 
+(* module Make (Ord : Map.OrderedType) = *)
+(* struct *)
+(*   include Map.Make(Ord) *)
+
+(*   let from_list : 'a list -> 'a t *)
+(*     = fun xs -> *)
+(*     List.fold_left (fun map x -> Map.add x map) Map.empty xs *)
+(* end *)
+
+(* module StringMap = Make(String) *)
+(* module IntMap = Make(struct *)
+(*                       type t = int *)
+(*                       let compare = Pervasives.compare *)
+(*                     end) *)
 
