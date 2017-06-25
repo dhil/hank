@@ -27,12 +27,14 @@ module type COMBINATORS = sig
   val (<*>) : 'a t -> 'b t -> ('a * 'b) t
   val (<|>) : 'a t -> 'a t -> 'a t
   val (<$>) : ('a -> 'b) -> 'a t -> 'b t
+  val ( $>) : 'a t -> 'b -> 'b t
+  val (<$ ) : 'a -> 'b t -> 'a t
   val many : 'a t -> 'a list t
   val many1 : 'a t -> 'a list t
   val chainl : 'a t -> ('a -> 'a -> 'a) t -> 'a t
   val optional : 'a t -> 'a option t
-  val one_of : token list -> token t
-  val none_of : token list -> token t
+  (* val one_of : token list -> token t *)
+  (* val none_of : token list -> token t *)
   val enclosed : left:token -> right:token -> 'a t -> 'a t
   val separated_list : sep:token -> 'a t -> 'a list t
 end
@@ -46,16 +48,19 @@ module type PARSER = sig
   val of_comp : (unit -> 'a) -> 'a t
   val satisfy : (token -> bool) -> token t
   val any  : token t
+  val peek : token -> bool
   val token : token -> token t
   val fail : 'a t
   val choose : 'a t -> 'a t -> 'a t
   val eos  : unit t
+  val one_of : 'a t list -> 'a t
 
   val eval : 'a t -> 'a
   val run : token Stream.t -> 'a t -> 'a
 
   include COMBINATORS with type 'a t := 'a t
                        and type token := token
+
 end
 
 module Parser(K : K)
@@ -82,8 +87,11 @@ struct
     = of_comp (fun () -> perform Any)
 
   effect Peek : Token.t
-  let peek : Token.t t
-    = of_comp (fun () -> perform Peek)
+  let peek : Token.t -> bool
+    = fun t1 ->
+    match Token.compare t1 (perform Peek) with
+    | EQ -> true
+    | _ -> false
 
   let satisfy : (Token.t -> bool) -> Token.t t
     = fun p ->
@@ -191,6 +199,11 @@ struct
     in
     of_comp parse
 
+  let ( $>) p x =
+    p *> (of_comp (fun () -> x))
+
+  let (<$ ) x p = p $> x
+
   let rec many p =
     let lhs () =
       let x = eval p in
@@ -226,9 +239,12 @@ struct
     | x :: xs when Token.compare x y = EQ -> true
     | _ :: xs -> mem y xs
 
-  let one_of : Token.t list -> Token.t t =
-    fun xs ->
-    satisfy (fun y -> mem y xs)
+  (* let one_of : Token.t list -> Token.t t = *)
+  (*   fun xs -> *)
+  (*   satisfy (fun y -> mem y xs) *)
+  let rec one_of : 'a t list -> 'a t
+    = fun ps ->
+    List.fold_right choose ps fail
 
   let none_of : Token.t list -> Token.t t =
     fun xs ->
