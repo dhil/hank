@@ -39,25 +39,25 @@ rule read =
   | comment  { read lexbuf }
   | "{-"     { read_multiline_comment lexbuf }
   | newline  { next_line lexbuf; read lexbuf }
-  | "let"    { located LET lexbuf }
-  | "in"     { located IN lexbuf }
-  | "interface" { located INTERFACE lexbuf }
-  | "data"   { located DATA lexbuf }
-  | name     { located (NAME (lexeme lexbuf)) lexbuf }
-  | int      { located (INT (int_of_string (lexeme lexbuf))) lexbuf }
-  | '{'      { located LBRACE lexbuf }
-  | '}'      { located RBRACE lexbuf }
-  | '('      { located LPAREN lexbuf }
-  | ')'      { located RPAREN lexbuf }
-  | '['      { located LBRACKET lexbuf }
-  | ']'      { located RBRACKET lexbuf }
-  | ','      { located COMMA lexbuf }
-  | '"'      { located (read_string (Buffer.create 17) lexbuf) lexbuf }
-  | "'"      { located (CHAR (read_char lexbuf)) lexbuf }
-  | "->"     { located ARROW lexbuf }
-  | ':'      { located COLON lexbuf }
-  | operator { located (OPERATOR (lexeme lexbuf)) lexbuf }
-  | eof      { located EOF lexbuf }
+  | "let"    {  LET  }
+  | "in"     {  IN  }
+  | "interface" {  INTERFACE  }
+  | "data"   {  DATA  }
+  | name     {  (NAME (lexeme lexbuf))  }
+  | int      {  (INT (int_of_string (lexeme lexbuf)))  }
+  | '{'      {  LBRACE  }
+  | '}'      {  RBRACE  }
+  | '('      {  LPAREN  }
+  | ')'      {  RPAREN  }
+  | '['      {  LBRACKET  }
+  | ']'      {  RBRACKET  }
+  | ','      {  COMMA  }
+  | '"'      {  (read_string (Buffer.create 17) lexbuf)  }
+  | "'"      {  (CHAR (read_char lexbuf))  }
+  | "->"     {  ARROW  }
+  | ':'      {  COLON  }
+  | operator {  (OPERATOR (lexeme lexbuf))  }
+  | eof      {  EOF  }
   | _ { raise (SyntaxError ("Unexpected char: " ^ lexeme lexbuf)) }
 
 and read_string buf =
