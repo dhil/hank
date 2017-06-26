@@ -231,13 +231,20 @@ module Language (P : PARSER with type token = Tok.t) = struct
     let rec f x = p f x in
     f
 
-  let tyconstr type_arg =
-    let constr = parameterised_thing type_arg in
+  let defer : ('a P.t Lazy.t) -> 'a P.t
+    = fun p ->
+    of_comp (fun () -> parse @@ Lazy.force p)
+
+  let rec tyconstr =
+    lazy(
+    let constr = parameterised_thing (defer type_arg) in
     let transform (name, params) =
+      Printf.printf "Constructing %s tyconstr\n" name; flush stdout;
       Make.Types.Value_type.mktyconstr name params
     in
-    transform <$> constr
-  and value_type value_type tyconstr =
+    transform <$> constr)
+  and value_type =
+    lazy(
     let typ_var () =
       match parse tyvar with
       | var when var.styvar_kind = Sk_val ->
@@ -245,12 +252,11 @@ module Language (P : PARSER with type token = Tok.t) = struct
       | _ -> parse fail
     in
     let typ_var = of_comp typ_var in
-    let constr  = Make.Types.Value_type.mkconstr <$> tyconstr in
+    let constr  = Make.Types.Value_type.mkconstr <$> (defer tyconstr) in
     let alternatives = [constr; typ_var] in
-    one_of alternatives
-  let rec type_arg =
-    value_type value_type (tyconstr type_arg) (*value_type (* <|> ability *)*)
-  let tyconstr = tyconstr type_arg
+    one_of alternatives)
+  and type_arg =
+    lazy( defer value_type) (*value_type (* <|> ability *)*)
 
 
   let data_declaration : data P.t =
@@ -259,7 +265,7 @@ module Language (P : PARSER with type token = Tok.t) = struct
       let (name, params) = parse @@ parameterised_thing tyvar in
       let _ = parse (token eq) in
       let constrs =
-        parse @@ separated_list ~sep:bar tyconstr
+        parse @@ separated_list ~sep:bar (defer tyconstr)
       in
       Make.Data.mkdata name params constrs
     in
