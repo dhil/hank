@@ -5,16 +5,18 @@ open Token
 exception SyntaxError of string
 
 let next_line lexbuf =
-  let pos = lexbuf.lex_curr_p in
-  lexbuf.lex_curr_p <-
-    { pos with pos_bol = lexbuf.lex_curr_pos;
-               pos_lnum = pos.pos_lnum + 1
-    }
+ let pos = lexbuf.lex_curr_p in
+ lexbuf.lex_curr_p <-
+   { pos with pos_bol = lexbuf.lex_curr_pos;
+              pos_lnum = pos.pos_lnum + 1
+   }
 
-let located token lexbuf =
-  let start = lexeme_start_p lexbuf in
-  let end'  = lexeme_end_p lexbuf in
-  Loc.Located.lift token start end'
+let keywords = [
+  "data", DATA;
+  "let", LET;
+  "in", IN
+]
+
 }
 
 let int = '-'? ['0'-'9'] ['0'-'9']*
@@ -39,11 +41,12 @@ rule read =
   | comment  { read lexbuf }
   | "{-"     { read_multiline_comment lexbuf }
   | newline  { next_line lexbuf; read lexbuf }
-  | "let"    {  LET  }
-  | "in"     {  IN  }
-  | "interface" {  INTERFACE  }
-  | "data"   {  DATA  }
-  | name     {  (NAME (lexeme lexbuf))  }
+  | name     {  let s = lexeme lexbuf in
+                try List.assoc s keywords with
+                | Not_found ->
+                   if Char.code s.[0] >= 65 && Char.code s.[0] <= 90 then UIDENT s
+                   else LIDENT s
+             }
   | int      {  (INT (int_of_string (lexeme lexbuf)))  }
   | '{'      {  LBRACE  }
   | '}'      {  RBRACE  }
@@ -51,12 +54,15 @@ rule read =
   | ')'      {  RPAREN  }
   | '['      {  LBRACKET  }
   | ']'      {  RBRACKET  }
+  | "=>"     {  BOLDRARROW }
+  | "->"     {  RARROW }
+  | '<'      {  LT  }
+  | '>'      {  GT  }
+  | '='      {  EQUALS }
   | ','      {  COMMA  }
   | '"'      {  (read_string (Buffer.create 17) lexbuf)  }
   | "'"      {  (CHAR (read_char lexbuf))  }
-  | "->"     {  ARROW  }
   | ':'      {  COLON  }
-  | operator {  (OPERATOR (lexeme lexbuf))  }
   | eof      {  EOF  }
   | _ { raise (SyntaxError ("Unexpected char: " ^ lexeme lexbuf)) }
 
@@ -98,3 +104,13 @@ and read_multiline_comment =
   | "-}"      { read lexbuf }
   | eof       { raise (SyntaxError ("Comment is not terminated")) }
   | _         { read_multiline_comment lexbuf }
+
+{
+let tokenise s =
+  let rec next buf =
+     match read buf with
+     | EOF -> []
+     | t -> t :: next buf
+  in
+  next (Lexing.from_string s)
+}

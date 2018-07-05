@@ -1,63 +1,42 @@
 type t =
-  | NAME of string
-  | INT of int
-  | LET
-  | IN
+  | BEGIN_BLOCK | END_BLOCK
+  | LPAREN | RPAREN | LBRACE | RBRACE | LBRACKET | RBRACKET
+  | LT | GT
+  | LET | IN
   | DATA
-  | INTERFACE
-  | STRING of string
-  | CHAR of char
-  | OPERATOR of string
-  | LBRACE
-  | RBRACE
-  | LPAREN
-  | RPAREN
-  | LBRACKET
-  | RBRACKET
-  | ARROW
-  | EQUAL
-  | LT
-  | GT
+  | COMMA | COLON
+  | RARROW
+  | BOLDRARROW
+  | EQUALS
   | BAR
-  | COLON
-  | SEMICOLON
-  | COMMA
-  | BANG
+  | INT of int | CHAR of char | STRING of string
+  | UIDENT of string
+  | LIDENT of string
   | EOF
 
-let to_string =
-  let open Printf in
-  function
-  | NAME s -> sprintf "NAME(%s)" s
-  | INT i -> sprintf "INTEGER(%d)" i
-  | LET -> "LET"
-  | IN  -> "IN"
-  | DATA -> "DATA"
-  | INTERFACE -> "INTERFACE"
-  | STRING s -> sprintf "STRING(%s)" s
-  | CHAR c -> sprintf "CHAR(%c)" c
-  | OPERATOR s -> sprintf "OPERATOR(%s)" s
-  | LBRACE -> "LBRACE"
-  | RBRACE -> "RBRACE"
+let to_string = function
+  | BEGIN_BLOCK -> "BEGIN"
+  | END_BLOCK  -> "END"
   | LPAREN -> "LPAREN"
   | RPAREN -> "RPAREN"
+  | LBRACE -> "LBRACE"
+  | RBRACE -> "RBRACE"
   | LBRACKET -> "LBRACKET"
   | RBRACKET -> "RBRACKET"
-  | ARROW -> "ARROW"
-  | EQUAL -> "EQUAL"
   | LT -> "LT"
   | GT -> "GT"
-  | BAR -> "BAR"
-  | COLON -> "COLON"
-  | SEMICOLON -> "SEMICOLON"
+  | LET -> "LET"
+  | IN -> "IN"
+  | DATA -> "DATA"
   | COMMA -> "COMMA"
-  | BANG -> "BANG"
+  | COLON -> "COLON"
+  | RARROW -> "RARROW"
+  | BOLDRARROW -> "BOLDRARROW"
+  | EQUALS -> "EQUALS"
+  | BAR -> "BAR"
+  | INT n  -> Printf.sprintf "INT(%d)" n
+  | CHAR c -> Printf.sprintf "CHAR(%c)" c
+  | STRING s -> Printf.sprintf "STRING(%s)" s
+  | UIDENT s  -> Printf.sprintf "UIDENT(%s)" s
+  | LIDENT s  -> Printf.sprintf "LIDENT(%s)" s
   | EOF -> "EOF"
-
-let compare t1 t2 =
-  let open Utils in
-  match Pervasives.compare t1 t2 with
-  | (-1) -> LT
-  | 0 -> EQ
-  | 1 -> GT
-  | _ -> assert false
