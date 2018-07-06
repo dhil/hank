@@ -11,6 +11,10 @@ let next_line lexbuf =
               pos_lnum = pos.pos_lnum + 1
    }
 
+let position lexbuf =
+  let p = lexbuf.lex_curr_p in
+  (p.pos_lnum, (p.pos_cnum - p.pos_bol))
+
 let keywords = [
   "data", DATA;
   "let", LET;
@@ -107,10 +111,54 @@ and read_multiline_comment =
 
 {
 let tokenise s =
-  let rec next buf =
-     match read buf with
-     | EOF -> []
-     | t -> t :: next buf
+  let pos_cmp (l, c) (l', c') =
+    if l = l' && c <= c' then 0
+    else if l < l' && c > c' then 1
+    else if l < l' && c < c' then (-1)
+    else (assert false)
   in
-  next (Lexing.from_string s)
+  let blocks : (int * int) list ref = ref ([] : (int * int) list) in
+  let buf : Token.t option ref = ref None in
+  let lcur = ref 0 in
+  let next lexbuf =
+    match !buf with
+    | None ->
+       let tok = read lexbuf in
+       let (lnum', cnum') = position lexbuf in
+       if !lcur = lnum' then tok
+       else
+         begin match !blocks with
+         | [] ->
+           buf := Some tok;
+           blocks := [(lnum', cnum')];
+           lcur := lnum';
+           BEGIN_BLOCK
+         | (lnum, cnum) :: blocks' ->
+            if !lcur+1 <> lnum' then
+              (buf := Some tok;
+               blocks := blocks';
+               lcur := lnum';
+               END_BLOCK)
+            else if !lcur+1 = lnum' && cnum <= cnum' then tok
+            else if cnum < cnum' then
+              (buf := Some tok;
+               blocks := ((lnum', cnum') :: (lnum, cnum) :: blocks');
+               lcur := lnum';
+               BEGIN_BLOCK)
+            else
+              (buf := Some tok;
+               blocks := blocks';
+               lcur := lnum';
+               END_BLOCK)
+       end
+    | Some tok ->
+       buf := None;
+       tok
+  in
+  let rec loop lexbuf =
+    match next lexbuf with
+    | EOF -> []
+    | t   -> t :: (loop lexbuf)
+  in
+  loop (Lexing.from_string s)
 }
