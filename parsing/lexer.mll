@@ -67,6 +67,7 @@ rule read =
   | '"'      {  (read_string (Buffer.create 17) lexbuf)  }
   | "'"      {  (CHAR (read_char lexbuf))  }
   | ':'      {  COLON  }
+  | '|'      {  BAR }
   | eof      {  EOF  }
   | _ { raise (SyntaxError ("Unexpected char: " ^ lexeme lexbuf)) }
 
@@ -139,7 +140,7 @@ let tokenise s =
                blocks := blocks';
                lcur := lnum';
                END_BLOCK)
-            else if !lcur+1 = lnum' && cnum <= cnum' then tok
+            else if !lcur+1 = lnum' && cnum <= cnum' then (lcur := lnum'; tok)
             else if cnum < cnum' then
               (buf := Some tok;
                blocks := ((lnum', cnum') :: (lnum, cnum) :: blocks');
@@ -157,7 +158,7 @@ let tokenise s =
   in
   let rec loop lexbuf =
     match next lexbuf with
-    | EOF -> []
+    | EOF -> List.map (fun _ -> END_BLOCK) !blocks @ [EOF]
     | t   -> t :: (loop lexbuf)
   in
   loop (Lexing.from_string s)

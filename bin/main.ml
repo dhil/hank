@@ -1,6 +1,9 @@
 let _ =
   let source =
 "\
+data List A = Nil
+            | Cons A (List A)
+
 pipe : (<send : A -> ()>B, <recv : A>B) -> B\n\
 pipe (<_>, v) = v\n\
   pipe (<send(msg) -> sender>, <recv -> receiver>) = pipe (sender (), receiver msg)\n\n\
