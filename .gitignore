@@ -22,3 +22,13 @@ setup.log
 # Temporaries
 *~
 \#*
+
+# OPAM
+*.install
+
+# Jbuilder
+*.merlin
+_build/
+
+# Build target
+hank
