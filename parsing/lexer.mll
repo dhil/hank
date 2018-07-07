@@ -111,13 +111,7 @@ and read_multiline_comment =
   | _         { read_multiline_comment lexbuf }
 
 {
-let tokenise s =
-  let pos_cmp (l, c) (l', c') =
-    if l = l' && c <= c' then 0
-    else if l < l' && c > c' then 1
-    else if l < l' && c < c' then (-1)
-    else (assert false)
-  in
+let tokenise lexbuf =
   let blocks : (int * int) list ref = ref ([] : (int * int) list) in
   let buf : Token.t option ref = ref None in
   let lcur = ref 0 in
@@ -161,5 +155,5 @@ let tokenise s =
     | EOF -> List.map (fun _ -> END_BLOCK) !blocks @ [EOF]
     | t   -> t :: (loop lexbuf)
   in
-  loop (Lexing.from_string s)
+  loop lexbuf
 }
