@@ -7,15 +7,15 @@ bug-reports: "https://github.com/dhil/hank/issues"
 license: "GPL-3"
 
 available: [
-  ocaml-version >= "4.06.0"
+  ocaml-version >= "4.06.1"
 ]
 
 build: [
-  [ "jbuilder" "subst" "-n" name ] {pinned}
-  [ "jbuilder" "build" "-p" name "-j" jobs ]
+  [ "dune" "subst" "-n" name ] {pinned}
+  [ "dune" "build" "-p" name "-j" jobs ]
 ]
 
 depends: [
-  "jbuilder" {build}
+  "dune" {build}
   "menhir" {build}
 ]

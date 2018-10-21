@@ -1,0 +1,5 @@
+(env
+ (development
+   (flags (:standard -safe-string -dtypes -w Ae-26-33-39-44-45-60 -g)))
+ (release
+   (flags (:standard -safe-string -dtypes -warn-error Ae))))

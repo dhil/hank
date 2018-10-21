@@ -15,9 +15,10 @@ let _ =
        (fun source ->
          let ic = open_in source in
          try
+           let open Lexer in
            let lexbuf = Lexing.from_channel ic in
-           let tokens = Lexer.tokenise lexbuf in
+           let tokens = assert false (* Lexer.tokenise lexbuf *) in
            close_in ic;
-           List.iter (fun t -> print_endline (Token.to_string t)) tokens
+           List.iter (fun _t -> print_endline "Token") tokens
          with e -> close_in_noerr ic; raise e)
        !Settings.source_files

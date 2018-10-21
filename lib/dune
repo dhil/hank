@@ -1,0 +1,12 @@
+(ocamllex
+ (modules lexer))
+(menhir
+ (modules parser))
+
+(library
+ (name libhank)
+ (public_name hank)
+ (synopsis "Hank compiler library")
+ (modes native)
+ (wrapped false)
+ (flags (:standard -safe-string -dtypes -w Ae-39-44-45-60 -g -cclib -lunix -thread)))

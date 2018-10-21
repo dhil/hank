@@ -3,13 +3,17 @@
 #
 
 all:
-	jbuilder build -p hank -j 4 @install
+	dune build --only-packages hank --profile=development @install
 	ln -fs _build/default/bin/main.exe hank
+
+release:
+	dune build --only-packages hank --profile=release @install
 
 run-tests: tests
 	./driver.native -list-test
 
 clean:
-	jbuilder clean
+	dune clean
+	rm -f hank
 
 .PHONY: all clean native tests
