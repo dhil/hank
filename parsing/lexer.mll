@@ -11,6 +11,10 @@ let next_line lexbuf =
               pos_lnum = pos.pos_lnum + 1
    }
 
+let column lexbuf =
+  let p = lexbuf.lex_curr_p in
+  p.pos_cnum - p.pos_bol
+
 let position lexbuf =
   let p = lexbuf.lex_curr_p in
   (p.pos_lnum, (p.pos_cnum - p.pos_bol))
@@ -142,6 +146,24 @@ and read_multi_string buf = parse
 
 
 {
+
+(* module TokenStream = struct
+ *   type t = {
+ *       mutable buffer: Token.t list;
+ *       next: (Lexing.buf -> Token.t)
+ *     }
+ * 
+ *   let empty next = { buffer = []; next }
+ *   let push ts t =
+ *     ts.buffer <- t :: ts.buffer; ts
+ *   let pop ts lexbuf =
+ *     match ts.buffer with
+ *     | [] -> ts.next lexbuf
+ *     | t :: buffer ->
+ *        ts.buffer <- buffer;
+ *        t
+ * end *)
+
 let tokenise lexbuf =
   let rec loop lexbuf result =
     match read lexbuf with

@@ -14,6 +14,9 @@ type t =
   | LIDENT of string
   | UIDENT of string
   | BEGIN | END
+  | SEMICOLON
+  | IDENT of int
+  | DEDENT of int
   | EOF
 
 let to_string = function
@@ -33,6 +36,9 @@ let to_string = function
   | UIDENT s -> s
   | BEGIN -> "begin"
   | END -> "end"
+  | SEMICOLON -> ";"
+  | IDENT n -> Printf.sprintf "{%d}" n
+  | DEDENT n -> Printf.sprintf "<%d>" n
   | EOF -> "EOF"
 (* type t =
  *   | BEGIN_BLOCK | END_BLOCK
