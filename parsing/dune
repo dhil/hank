@@ -1,0 +1,8 @@
+(ocamllex lexer)
+
+(library
+ (name hank)
+ (public_name hank)
+ (synopsis "Hank compiler libraries: parsing")
+ (wrapped true)
+ (modes native))

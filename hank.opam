@@ -1,4 +1,4 @@
-opam-version: "1.2"
+opam-version: "2.0"
 maintainer: "Daniel Hillerström"
 authors: "Daniel Hillerström"
 homepage: "https://github.com/dhil/hank"
@@ -7,7 +7,7 @@ bug-reports: "https://github.com/dhil/hank/issues"
 license: "GPL-3"
 
 available: [
-  ocaml-version >= "4.06.1"
+  ocaml-version >= "4.07.0"
 ]
 
 build: [

@@ -3,4 +3,4 @@
  (public_name hank)
  (package hank)
  (modes native)
- (libraries libhank))
+ (libraries hank))
