@@ -13,6 +13,7 @@ type t =
   | WHERE
   | LIDENT of string
   | UIDENT of string
+  | BEGIN | END
   | EOF
 
 let to_string = function
@@ -30,6 +31,8 @@ let to_string = function
   | WHERE -> "where"
   | LIDENT s -> s
   | UIDENT s -> s
+  | BEGIN -> "begin"
+  | END -> "end"
   | EOF -> "EOF"
 (* type t =
  *   | BEGIN_BLOCK | END_BLOCK

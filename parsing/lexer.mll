@@ -96,6 +96,10 @@ let modid = (conid '.')* conid
 let qvarid = (modid '.')? varid
 let qconid = (modid '.')? conid
 
+(* Layout delimiters *)
+let begin' = "begin"
+let end'   = "end"
+
 rule read = parse
 | whitespace { read lexbuf }
 | newline    { next_line lexbuf; read lexbuf }
@@ -110,6 +114,8 @@ rule read = parse
                try Hashtbl.find keywords raw
                with Not_found -> LIDENT raw }
 | qconid     { UIDENT (lexeme lexbuf) }
+| begin'     { BEGIN }
+| end'       { END }
 | eof        { EOF }
 | _ { raise (LexicalError (lexeme lexbuf)) }
 
@@ -124,8 +130,15 @@ and read_string buf = parse
 | eof                 { raise (LexicalError ("String is not terminated")) }
 | '"'                 { STRING (Buffer.contents buf) }
 | backslash escape    { Buffer.add_string buf (lexeme lexbuf); read_string buf lexbuf }
+| backslash           { read_multi_string buf lexbuf; read_string buf lexbuf }
 | _                   { Buffer.add_string buf (lexeme lexbuf);
                         read_string buf lexbuf }
+and read_multi_string buf = parse
+| eof                 { raise (LexicalError ("String is not terminated")) }
+| backslash           { () }
+| newline             { next_line lexbuf; read_multi_string buf lexbuf }
+| whitechar+          { read_multi_string buf lexbuf }
+| _                   { raise (LexicalError ("Unexpected character literal")) }
 
 
 {
