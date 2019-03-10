@@ -9,13 +9,14 @@ type t =
   | IF
   | IN
   | MODULE
+  | OF
   | THEN
   | WHERE
   | LIDENT of string
   | UIDENT of string
   | BEGIN | END
   | SEMICOLON
-  | IDENT of int
+  | INDENT of int
   | DEDENT of int
   | EOF
 
@@ -31,13 +32,14 @@ let to_string = function
   | IN  -> "in"
   | MODULE -> "module"
   | THEN -> "then"
+  | OF -> "of"
   | WHERE -> "where"
   | LIDENT s -> s
   | UIDENT s -> s
   | BEGIN -> "begin"
   | END -> "end"
   | SEMICOLON -> ";"
-  | IDENT n -> Printf.sprintf "{%d}" n
+  | INDENT n -> Printf.sprintf "{%d}" n
   | DEDENT n -> Printf.sprintf "<%d>" n
   | EOF -> "EOF"
 (* type t =

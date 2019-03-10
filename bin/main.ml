@@ -15,11 +15,16 @@ let _ =
   in
   List.iter
     (fun source ->
-      let ic = open_in source in
+      let open Hank in
+      let scanner = Scanner.from_file source in
       try
-        let lexbuf = Lexing.from_channel ic in
-        let tokens = Hank.Lexer.tokenise lexbuf in
-        close_in ic;
-        List.iter (fun t -> print_endline (Hank.Token.to_string t)) tokens
-      with e -> close_in_noerr ic; raise e)
+        let rec consume scanner =
+          match Scanner.next scanner with
+          | Token.EOF -> [Token.EOF]
+          | t -> t :: consume scanner
+        in
+        let tokens = consume scanner in
+        Scanner.close scanner;
+        List.iter (fun t -> print_endline (Token.to_string t)) tokens
+      with e -> Scanner.close_noerr scanner; raise e)
     !Settings.source_files
